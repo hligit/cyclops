@@ -25,15 +25,17 @@ jobs:
         id: vars
         run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
-      - name: Build image
-        run: docker build . --file Dockerfile --tag $IMAGE_NAME
+      - uses: docker/setup-buildx-action@v1
+        id: buildx
+        with:
+          install: true
 
       - name: Log into GitHub Container Registry
         # a PAT with `read:packages` and `write:packages` scopes is an Actions secret `CR_PAT`. 
         # Doesn't support Org or Repo level PATs and no bot accounts
         run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ secrets.CR_PAT_USER }} --password-stdin
 
-      - name: Push image to GitHub Container Registry
+      - name: build and push image to GitHub Container Registry
         run: |
           IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
 
@@ -49,5 +51,4 @@ jobs:
           echo IMAGE_ID=$IMAGE_ID
           echo VERSION=$VERSION
 
-          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
-          docker push $IMAGE_ID:$VERSION
+          docker build . --file Dockerfile --tag  $IMAGE_ID:$VERSION --platform linux/amd64,linux/arm64 --push
